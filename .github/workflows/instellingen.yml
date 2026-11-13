@@ -1,0 +1,67 @@
+name: Instellingen
+
+# Kost 0 SerpApi-zoekopdrachten. Laat een veld leeg om het ongewijzigd te laten.
+on:
+  workflow_dispatch:
+    inputs:
+      melding_tot:
+        description: "Melding met geluid t/m deze prijs p.p. (bijv. 900)"
+        required: false
+      personen:
+        description: "Aantal personen"
+        required: false
+      nachten:
+        description: "Aantal nachten (bijv. 18-24 of 21)"
+        required: false
+      max_reisduur_uur:
+        description: "Maximale reisduur per richting (uren)"
+        required: false
+      max_overstappen:
+        description: "Maximaal aantal overstappen (0, 1 of 2)"
+        required: false
+      direct_meerprijs:
+        description: "Melding als een directe vlucht hooguit zoveel p.p. duurder is dan met overstap (bijv. 100)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flightwatch
+  cancel-in-progress: false
+
+jobs:
+  instellen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Instellingen wijzigen
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MELDING: ${{ inputs.melding_tot }}
+          PERSONEN: ${{ inputs.personen }}
+          NACHTEN: ${{ inputs.nachten }}
+          MAX_UUR: ${{ inputs.max_reisduur_uur }}
+          MAX_OVERSTAPPEN: ${{ inputs.max_overstappen }}
+          DIRECT: ${{ inputs.direct_meerprijs }}
+        run: |
+          python -m flightwatch instellen --melding-tot "$MELDING" --personen "$PERSONEN" --nachten "$NACHTEN" \
+            --max-uur "$MAX_UUR" --max-overstappen "$MAX_OVERSTAPPEN" --direct-meerprijs "$DIRECT"
+
+      - name: Config bewaren
+        run: |
+          git config user.name "flightwatch-bot"
+          git config user.email "flightwatch-bot@users.noreply.github.com"
+          git add config.toml
+          git diff --cached --quiet || git commit -m "Instellingen gewijzigd"
+          git push

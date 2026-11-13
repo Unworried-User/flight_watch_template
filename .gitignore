@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+data/ruw/
+data/cache/
+data/laatste_rapport.txt

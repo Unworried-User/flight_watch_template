@@ -1,0 +1,144 @@
+# Japan Flight Watch — instellingen
+# Secrets (SerpApi-key, Telegram) staan NIET hier, maar in .env (lokaal)
+# of in GitHub repository secrets (online).
+
+[reis]
+naam = "Japan · mei 2027"
+id = "japan-2027-05"              # eigen database: data/japan-2027-05.db
+database_overnemen = "flightwatch.db"  # eenmalig: historie van vóór de reis-id's overnemen
+volwassenen = 2
+vertrek_van = 2027-05-06          # eerste mogelijke vertrekdatum
+vertrek_tot = 2027-05-10          # laatste mogelijke vertrekdatum
+nachten_min = 18
+nachten_max = 24
+# Bestemmingen (Tokio NRT/HND, Osaka KIX). Extra bestemmingen kosten geen extra zoekopdrachten.
+# De eerste bestemming wordt gebruikt voor de Google-prijsband.
+bestemmingen = ["NRT", "HND", "KIX"]
+
+# Vertrekluchthavens. Reistijd vanaf Weert is alleen informatie, telt niet mee.
+# Een luchthaven zonder geschikte vlucht (zoals nu EIN) wordt wel gezocht, maar in het rapport verborgen.
+[thuis]
+woonplaats = "Weert"
+
+[luchthavens.AMS]
+naam = "Amsterdam Schiphol"
+reistijd = "±2u"
+
+[luchthavens.DUS]
+naam = "Düsseldorf"
+reistijd = "±1u15"
+
+[luchthavens.BRU]
+naam = "Brussel Zaventem"
+reistijd = "±1u30"
+
+[luchthavens.CGN]
+naam = "Keulen/Bonn"
+reistijd = "±1u30"
+
+[luchthavens.EIN]
+naam = "Eindhoven"
+reistijd = "±30min"
+
+[filters]
+max_overstappen = 1               # per richting
+max_reisduur_uur = 20             # per richting, excl. reis naar de luchthaven
+aparte_tickets_toestaan = false   # "self transfer" / losse tickets uitsluiten
+
+[prijs]                           # per persoon, retour, EUR, incl. koffer (zie [bagage])
+# Bij een prijs t/m dit bedrag: melding met geluid en eenmalig de boekingsopties ophalen.
+melding_tot = 900
+# Melding met geluid als de beste directe vlucht hooguit zoveel p.p. duurder is dan de beste met overstap.
+direct_meerprijs_melding = 100
+# Of Google bij 2 volwassenen de totaalprijs toont (true) of de prijs p.p. (false).
+# Vastgesteld met: python -m flightwatch kalibreer
+prijs_is_totaal = true
+
+# Prijsschaal, van goedkoop naar duur. Een prijs valt in de eerste categorie waarvan 'tot' (t/m) niet lager is.
+# De laatste categorie heeft geen 'tot'. Ingeschat voor half mei 2027 (net na Golden Week), incl. koffer.
+[[prijs.categorie]]
+tot = 600
+teken = "🔥"
+naam = "uitzonderlijk, direct checken"
+
+[[prijs.categorie]]
+tot = 750
+teken = "💎"
+naam = "zeer goed"
+
+[[prijs.categorie]]
+tot = 900
+teken = "✅"
+naam = "goed"
+
+[[prijs.categorie]]
+tot = 1000
+teken = "👍"
+naam = "redelijk"
+
+[[prijs.categorie]]
+tot = 1150
+teken = "➖"
+naam = "gemiddeld"
+
+[[prijs.categorie]]
+teken = "⬆️"
+naam = "duur"
+
+[serpapi]
+maandbudget = 250                 # gratis tier
+reserve = 10                      # nooit aanspreken (handmatige tests, kalibratie)
+budget_reset_dag = 21             # reserve; normaal leest de code de vernieuwingsdatum uit je SerpApi-account
+max_zoekopdrachten_per_run = 12
+terugvlucht_checks_per_run = 1   # Google filtert al op beide richtingen; de check bevestigt en geeft details
+pauze_seconden = 2
+valuta = "EUR"
+land = "nl"                       # gl
+taal = "en"                       # hl; Engels houdt de antwoorden goed leesbaar voor de code
+
+[bagage]
+meerekenen = true                 # rangorde en prijslabels op ticket + koffer
+koffers_per_persoon = 1           # ingecheckte koffer van 20 kg
+
+# Bronnen (22 okt 2026): officiële sites/calculators van de maatschappij, en GEMETEN goedkoopste tarieven op
+# CheapTickets.nl (AMS/DUS→Tokio, 10 mei–2 jun 2027). Een meting gaat voor op een algemene officiële regel.
+# Geen schattingen.
+
+# Gemeten: goedkoopste tarief zonder ruimbagage, maar geen vaste bijkoopprijs zichtbaar zonder persoonsgegevens.
+# Rapport toont "🧳€?" en rangschikt deze opties op ticketprijs.
+# Air France, LOT, SAS, Etihad: CheapTickets ruimbagage 0. LOT bijv. Standaard €1.273 → Compleet (23 kg) €1.389 p.p.
+# Iberia: officieel Basic zonder koffer, niet gemeten.
+niet_inbegrepen = ["Air France", "LOT", "Scandinavian Airlines", "Iberia"]
+
+# Toeslag in EUR per persoon PER RICHTING voor één koffer, bij het goedkoopste tarief. 0 = inbegrepen.
+# Een maatschappij die nergens staat, krijgt "koffer onbekend" (🧳?) in het rapport.
+# Naam zoals Google hem toont (maatschappij van het langste vluchtdeel).
+[bagage.toeslag_per_richting]
+"JAL" = 0                         # 2×23 kg (jal.co.jp; CheapTickets: ruim 2)
+"Qatar Airways" = 0               # Lite: 20 kg (qatarairways.com; CheapTickets DUS: ruim 1)
+"Emirates" = 0                    # Special: 20 kg (emirates.com; CheapTickets AMS/DUS: ruim 1)
+"Cathay Pacific" = 0              # Light: 1×23 kg (cathaypacific.com; CheapTickets AMS: ruim 1)
+"Turkish Airlines" = 0            # EcoFly: 1×23 kg (turkishairlines.com calculator DUS; CheapTickets AMS: ruim 1)
+"ANA" = 0                         # CheapTickets AMS/DUS: ruim 1 (officieel "0–2 stuks afhankelijk van tarief")
+"Lufthansa" = 0                   # CheapTickets AMS/DUS: goedkoopste tarief ruim 1 (ook Lufthansa heen+terug).
+                                  # Officieel kost de 1e koffer bij Light €70–85 p.r.; Light lijkt op Japan niet
+                                  # aangeboden. Wordt Light toch gezien: 85 invullen.
+"SWISS" = 0                       # idem (CheapTickets: ruim 1; officieel Light €70–85 p.r.)
+"Austrian" = 0                    # CheapTickets: ruim 1; Google-boekingsopties 22 okt: goedkoopste = Economy Comfort
+                                  # met 1e koffer gratis
+"British Airways" = 0             # CheapTickets AMS→HND via LHR: ruim 2 (officieel Basic zonder koffer bestaat)
+"THAI" = 0                        # CheapTickets: ruim 1
+"China Eastern" = 0               # CheapTickets: ruim 2
+"Korean Air" = 0                  # CheapTickets AMS→KIX 6/5–27/5: ruim 1 heen en terug (5 nov 2026)
+"Etihad" = 28                     # CheapTickets BRU→KIX 9/5–2/6: Standaard zonder koffer €859, Plus (25 kg) €916
+                                  # p.p. retour → ±€28 per richting via tariefupgrade (gemeten 5 nov 2026)
+"Finnair" = 90                    # Light: €80–100 online Japan–Europa (finnair.com). CheapTickets toonde alleen
+                                  # combinaties met JAL (ruim 2), geen zuiver Finnair-ticket.
+"ITA" = 130                       # Light: €130 per richting vanuit Japan (ita-airways.com)
+"KLM" = 91.74                     # Economy AMS→Tokio: geen ruimbagage, €91,74 per 23 kg per vlucht (zelf
+                                  # gecontroleerd 22 okt; CheapTickets: ruim 0). Direct = 1 vlucht per richting.
+# Niet gemeten (🧳?): Korean Air, China Airlines, Hainan, China Southern, Air China (zelden concurrerend).
+
+[rapport]
+top = 5
+max_leeftijd_dagen = 14           # oudere scans tellen niet meer mee in de top

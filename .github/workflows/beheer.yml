@@ -1,0 +1,71 @@
+name: Beheer
+
+# Kost 0 SerpApi-zoekopdrachten. Status, rapport opnieuw sturen (laatst bekende data), pauzeren/hervatten,
+# 'geboekt' (eindoverzicht + pauze), en bij het instellen: chat-id opzoeken en een testbericht sturen.
+on:
+  workflow_dispatch:
+    inputs:
+      actie:
+        description: "Wat wil je doen?"
+        required: true
+        type: choice
+        options: ["status", "rapport", "pauzeren", "hervatten", "geboekt", "chat-id", "telegram-test"]
+      prijs:
+        description: "Alleen bij 'geboekt': betaalde prijs per persoon incl. koffer (bijv. 968), mag leeg"
+        required: false
+      omschrijving:
+        description: "Alleen bij 'geboekt': wat je boekte (bijv. Austrian CGN→NRT 10/5–2/6), mag leeg"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flightwatch
+  cancel-in-progress: false
+
+jobs:
+  beheer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Uitvoeren
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ACTIE: ${{ inputs.actie }}
+          PRIJS: ${{ inputs.prijs }}
+          OMSCHRIJVING: ${{ inputs.omschrijving }}
+        run: |
+          if [ "$ACTIE" = "geboekt" ]; then
+            extra=()
+            [ -n "$PRIJS" ] && extra+=(--prijs "$PRIJS")
+            python -m flightwatch geboekt --omschrijving "$OMSCHRIJVING" "${extra[@]}"
+          elif [ "$ACTIE" = "rapport" ]; then
+            python -m flightwatch rapport --stuur
+          else
+            python -m flightwatch "$ACTIE"
+          fi
+
+      - name: Pauzestand bewaren
+        run: |
+          git config user.name "flightwatch-bot"
+          git config user.email "flightwatch-bot@users.noreply.github.com"
+          # alleen als het pauzebestand bestaat of eerder bestond (anders geeft git add een fout)
+          if [ -e data/PAUZE ] || git ls-files --error-unmatch data/PAUZE >/dev/null 2>&1; then
+            git add -A -- data/PAUZE
+          fi
+          git diff --cached --quiet || git commit -m "Beheer: $ACTIE"
+          git push
+        env:
+          ACTIE: ${{ inputs.actie }}

@@ -1,0 +1,98 @@
+name: Nieuwe reis
+
+# Formulier om een nieuwe reis in te richten. Kost maximaal 12 SerpApi-zoekopdrachten (met "proef" aan: 0).
+# Daarna gaat de dagelijkse run automatisch over de nieuwe reis; de oude config blijft bewaard in data/reizen/.
+on:
+  workflow_dispatch:
+    inputs:
+      bestemming:
+        description: "Bestemming: land, stad of luchthavencodes (bijv. Japan, Tokio, NRT,HND)"
+        required: true
+      vertrek_van:
+        description: "Eerste vertrekdatum, dd-mm-jj (bijv. 09-11-26)"
+        required: true
+      vertrek_tot:
+        description: "Laatste vertrekdatum, dd-mm-jj (bijv. 10-11-26)"
+        required: true
+      nachten:
+        description: "Aantal nachten, bijv. 18-24 of 21"
+        required: true
+      max_reisduur_uur:
+        description: "Maximale reisduur per richting (uren)"
+        required: true
+        default: "20"
+      max_overstappen:
+        description: "Maximaal aantal overstappen per richting"
+        required: true
+        type: choice
+        options: ["1", "0", "2"]
+      personen:
+        description: "Aantal personen"
+        required: true
+        default: "2"
+      vertrek:
+        description: "Vertrekluchthavens, bijv. AMS,EIN,DUS (leeg = zoals nu)"
+        required: false
+      woonplaats:
+        description: "Woonplaats, alleen voor 'reistijd vanaf ...' (leeg = zoals nu)"
+        required: false
+      proef:
+        description: "Proef: alleen tonen wat er zou gebeuren (0 zoekopdrachten, niets wijzigen)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flightwatch
+  cancel-in-progress: false
+
+jobs:
+  inrichten:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Nieuwe reis inrichten
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # via env doorgeven, nooit rechtstreeks in het commando (geen shell-injectie via het formulier)
+          BESTEMMING: ${{ inputs.bestemming }}
+          VAN: ${{ inputs.vertrek_van }}
+          TOT: ${{ inputs.vertrek_tot }}
+          NACHTEN: ${{ inputs.nachten }}
+          MAX_UUR: ${{ inputs.max_reisduur_uur }}
+          MAX_OVERSTAPPEN: ${{ inputs.max_overstappen }}
+          PERSONEN: ${{ inputs.personen }}
+          VERTREK: ${{ inputs.vertrek }}
+          WOONPLAATS: ${{ inputs.woonplaats }}
+          PROEF: ${{ inputs.proef }}
+        run: |
+          extra=""
+          if [ "$PROEF" = "true" ]; then extra="--droog"; fi
+          python -m flightwatch nieuwe-reis --bestemming "$BESTEMMING" --van "$VAN" --tot "$TOT" \
+            --nachten "$NACHTEN" --max-uur "$MAX_UUR" --max-overstappen "$MAX_OVERSTAPPEN" \
+            --personen "$PERSONEN" --vertrek "$VERTREK" --woonplaats "$WOONPLAATS" $extra
+
+      - name: Nieuwe config bewaren
+        if: ${{ !inputs.proef }}
+        run: |
+          git config user.name "flightwatch-bot"
+          git config user.email "flightwatch-bot@users.noreply.github.com"
+          git add config.toml data/reizen/
+          if git ls-files --error-unmatch data/PAUZE >/dev/null 2>&1; then git add -A -- data/PAUZE; fi
+          git diff --cached --quiet || git commit -m "Nieuwe reis: $BESTEMMING"
+          git push
+        env:
+          BESTEMMING: ${{ inputs.bestemming }}

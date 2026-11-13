@@ -1,0 +1,55 @@
+name: Flight Watch (dagelijks)
+
+on:
+  schedule:
+    - cron: "15 5 * * *"   # dagelijks 05:15 UTC = 07:15 (zomer) / 06:15 (winter) Nederlandse tijd
+  workflow_dispatch:        # knop "Run workflow" voor een extra run (ook vanaf je telefoon)
+
+permissions:
+  contents: write           # om de prijshistorie (data/<reis-id>.db) terug te schrijven
+
+concurrency:
+  group: flightwatch
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        # handmatig gestart = altijd draaien; gepland = maximaal één keer per dag
+        run: python -m flightwatch run ${{ github.event_name == 'workflow_dispatch' && '--forceer' || '' }}
+
+      - name: Prijshistorie bewaren
+        if: always()
+        run: |
+          git config user.name "flightwatch-bot"
+          git config user.email "flightwatch-bot@users.noreply.github.com"
+          # alle reis-databases, ook het verplaatsen van de oude data/flightwatch.db
+          # bij een nieuwe kopie zonder reis is er nog geen database
+          if ls data/*.db >/dev/null 2>&1; then git add -A -- 'data/*.db'; fi
+          git diff --cached --quiet || git commit -m "Scan $(date -u +%F)"
+          git push
+
+      - name: Ruwe antwoorden bewaren (30 dagen, voor herleidbaarheid)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ruw-${{ github.run_id }}
+          path: data/ruw/
+          retention-days: 30
+          if-no-files-found: ignore

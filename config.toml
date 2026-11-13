@@ -1,0 +1,70 @@
+# Flight Watch — instellingen
+# Dit is de startconfig: er is nog geen reis. Richt je eerste reis in via Actions → Nieuwe reis;
+# die vervangt het [reis]-deel, de prijsschaal en de koffertabel automatisch.
+# Secrets (SerpApi-key, Telegram) staan NIET hier, maar in GitHub: Settings → Secrets and variables → Actions.
+
+[reis]
+naam = "Nog geen reis"
+id = "nog-geen-reis"
+volwassenen = 2
+vertrek_van = 2020-01-01          # in het verleden: de dagelijkse run doet niets tot er een reis is
+vertrek_tot = 2020-01-02
+nachten_min = 7
+nachten_max = 7
+bestemmingen = ["NRT"]
+
+[thuis]
+woonplaats = ""                   # alleen voor 'reistijd vanaf ...' in het rapport; mag leeg blijven
+
+# Vertrekluchthavens. Kies ze bij 'Nieuwe reis' (veld 'Vertrekluchthavens', bijv. AMS,EIN,DUS)
+# of pas ze hier aan. Reistijd (bijv. "±1u30") is alleen informatie en mag leeg blijven.
+[luchthavens.AMS]
+naam = "Amsterdam Schiphol"
+reistijd = ""
+
+[filters]
+max_overstappen = 1               # per richting
+max_reisduur_uur = 20             # per richting
+aparte_tickets_toestaan = false   # "self transfer" / losse tickets uitsluiten
+
+[prijs]                           # per persoon, retour, EUR, incl. koffer waar bekend
+melding_tot = 900                 # wordt bij 'Nieuwe reis' bepaald op basis van de prijzen van die reis
+direct_meerprijs_melding = 100    # melding als een directe vlucht hooguit zoveel p.p. duurder is
+prijs_is_totaal = true            # Google toont bij meerdere personen de totaalprijs
+
+[[prijs.categorie]]
+tot = 600
+teken = "🔥"
+naam = "uitzonderlijk"
+
+[[prijs.categorie]]
+tot = 900
+teken = "✅"
+naam = "goed"
+
+[[prijs.categorie]]
+teken = "⬆️"
+naam = "duur"
+
+[serpapi]
+maandbudget = 250                 # gratis tier
+reserve = 10                      # nooit aanspreken
+budget_reset_dag = 1              # reserve; normaal leest de code de vernieuwingsdatum uit je SerpApi-account
+max_zoekopdrachten_per_run = 12
+terugvlucht_checks_per_run = 1
+pauze_seconden = 2
+valuta = "EUR"
+land = "nl"
+taal = "en"                       # Engels houdt de antwoorden goed leesbaar voor de code
+
+[bagage]
+meerekenen = true                 # rangorde en prijslabels op ticket + koffer
+koffers_per_persoon = 1
+niet_inbegrepen = []
+
+[bagage.toeslag_per_richting]
+# Wordt bij 'Nieuwe reis' gemeten. Toeslag in EUR p.p. per richting; 0 = inbegrepen.
+
+[rapport]
+top = 5
+max_leeftijd_dagen = 14
